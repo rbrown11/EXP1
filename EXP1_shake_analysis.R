@@ -1,8 +1,9 @@
 rm(list=ls())
 
+
 #setwd("C:/Users/bzniks/Dropbox/SeniorLectureship_Bristol/Students_postdocs/PhD_students/2021_Rachael_Brown/experiment1")
 # setwd("C:/Users/racha/OneDrive/Documents/PhD/Winter 2022/Experiment/DATA ANALYSIS")
-setwd("C:/Users/rb17990/OneDrive - University of Bristol/Desktop")
+setwd("C:/Users/rb17990/OneDrive - University of Bristol/Documents")
 events <- read.csv(file="events.csv", header=T, sep=",")
 
 
@@ -96,6 +97,7 @@ events1 [ which(events1$twitch_size == "Small") , "twitch_size" ] <- "small"
 unique(events1$twitch_size)
 
 events1$twitch_repetition <- sapply(strsplit(events1$Modifiers, ","), getElement, 2)
+
 events1[ which(events1$twitch_repetition == "single_twitch")  , "twitch_repetition" ] <- "single"
 events1[ which(events1$twitch_repetition == "part_of_a_repetitive_set")  , "twitch_repetition" ] <- "repetitive"
 unique(events1$twitch_repetition)
@@ -195,12 +197,12 @@ total_twitches [ which (total_twitches$Replicate > 16 ) , "rep_set" ] <- "2"
 
 
 ###remove summer focals
-# rep_set_one <- subset(total_twitches, rep_set=="1")
-# rep_set_two <- subset(total_twitches, rep_set=="2")
-# 
-# summer_nestmates <- subset(rep_set_two, ant_status=="NESTMATE")
-# 
-# total_twitches <- rbind(rep_set_one, summer_nestmates)
+rep_set_one <- subset(total_twitches, rep_set=="1")
+rep_set_two <- subset(total_twitches, rep_set=="2")
+
+summer_nestmates <- subset(rep_set_two, ant_status=="NESTMATE")
+
+total_twitches <- rbind(rep_set_one, summer_nestmates)
 
 
 ##temporal effects
@@ -244,7 +246,7 @@ mean_status$Group_size <- factor(mean_status$Group_size,
 cld <- c("a", "b", "ab", "a", "c", "e", "f", "e", "ab", "d", "e", "e", "", "", "", "", "", "", "", "", "")
 
 ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
+  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), linewidth=1) +
   geom_bar(position="dodge", stat="identity") +
   geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
@@ -667,6 +669,7 @@ ggplot(mean_status_first, aes(fill=Treatment, y=Mean, x=Group_size)) +
 #####STATS#####
 ###############
 
+## call this function form EXP1_FUNCTIONS
 
 test_norm <- function(resids){
   print("Testing normality")
@@ -761,32 +764,26 @@ matrix_contrasts_nestmates <- rbind("2C-2S"   = c(0 ,0 ,0 ,0 ,0 ,-1 ,0 ,0 ,0 ,-1
 ### FRREQUENCY OF SHAKES ###
 ############################
 
-### FOCAL MODELS ###
+### FOCAL MODEL ###
 
 ###Poisson model
-model_focal <- glmer(log(N+1) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                     family="poisson", data=total_twitches[which(total_twitches$ant_status=="FOCAL"),])
+model_focal <- glmer(log(N+1/sqrt(2)) ~ group_size*treatment + offset(log(duration)) + (1|Replicate),
+                     family="gaussian", data=total_twitches[which(total_twitches$ant_status=="FOCAL"),])
 
-qqnorm(residuals(model_focal))
-qqline(residuals(model_focal))
-hist(residuals(model_focal))
+
+# qqnorm(residuals(model_focal))
+# qqline(residuals(model_focal))
+# hist(residuals(model_focal))
 
 test_norm(residuals(model_focal))
-# no transformation: skewness=1.64, kurtosis=6.49
-# sqrt transformation: skewness=0.79 , kurtosis=0.82
-# log transformation (c=1): skewness=0.71 , kurtosis=0.53
 
 
-# res <- simulateResiduals(model_focal)
-# testUniformity(res)
-# testZeroInflation(res)
-
-Anova(model_focal, type="III") #CHECK THIS
+Anova(model_focal, type="III") 
 
 
 #interaction significant
-model_focal_interac <- glmer(log(N+1) ~ interac_size_treat + offset(log(duration)) + (1|Replicate)+ (1|time),
-                             family="poisson", data=total_twitches[which(total_twitches$ant_status=="FOCAL") , ])
+model_focal_interac <- glmer(log(N+1/sqrt(2)) ~ interac_size_treat + offset(log(duration)) + (1|Replicate),
+                             family="gaussian", data=total_twitches[which(total_twitches$ant_status=="FOCAL") , ])
 
 # test_norm(residuals(model_focal_interac))
 
@@ -798,36 +795,6 @@ post_hoc_focal_interac_tukey<- summary(glht(model_focal_interac, linfct=mcp(inte
 # post_hoc_focal_interac <- summary(glht(model_focal_interac, linfct=matrix_contrasts), test=adjusted("BH"))
 
 print(cld(post_hoc_focal_interac_tukey))
-# 1_C  1_P  1_S 11_C 11_P 11_S  2_C  2_P  2_S  6_C  6_P  6_S 
-# "a"  "c" "ab"  "a" "de" "de" "bc"  "e"  "d" "ab"  "f" "de" 
-
-### CHANGE THE POST HOCS ON THE GRAPH
-
-
-
-
-# 
-# ## GAMLSS MODELS ## 
-# gamlss_model <- gamlss(N ~ group_size*treatment + offset(log(duration)) + random(as.factor(Replicate)) + random(as.factor(time)),
-#                        data = na.omit(total_twitches[which(total_twitches$ant_status=="FOCAL"),]),longitudinal=no,
-#                        family =  ZIP())
-# 
-# hist(residuals(gamlss_model))
-# qqnorm(residuals(gamlss_model))
-# qqline(residuals(gamlss_model))
-# Anova(gamlss_model)
-# 
-# 
-# gamlss_model_sqrt <- gamlss(sqrt(N) ~ group_size*treatment + offset(log(duration)) + random(as.factor(Replicate)) + random(as.factor(time)),
-#                        data = na.omit(total_twitches[which(total_twitches$ant_status=="FOCAL"),]),longitudinal=no,
-#                        family =  ZIP())
-# 
-# hist(residuals(gamlss_model_sqrt))
-# qqnorm(residuals(gamlss_model_sqrt))
-# qqline(residuals(gamlss_model_sqrt))
-# Anova(gamlss_model_sqrt)
-# 
-# ##need to find post hocs
 
 
 
@@ -835,71 +802,33 @@ print(cld(post_hoc_focal_interac_tukey))
 
 
 
-### NESTMATE MODELS ###
+
+### NESTMATE MODEL ###
 
 
-###nestmate poisson
-model_nestmate <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                        family="poisson", data=total_twitches[which(total_twitches$ant_status=="NESTMATE"),])
-
-
-test_norm(residuals(model_nestmate))
-# no transformation: skewness=3.13, kurtosis=19.84
-# sqrt: skewness=2.35, kurtosis=6.92
-# log (c=1): skewness=2.40 , kurtosis=7.16
-# log10: skewness=2.53, kurtosis=7.57
-
-Anova(model_nestmate, type="III")
-
-hist(residuals(model_nestmate))
-qqnorm(residuals(model_nestmate))
-qqline(residuals(model_nestmate))
-
-# r.squaredGLMM(model_nestmate)
-
-
-
-#interaction non significant
-model_nestmate_ni <- glmer(sqrt(N) ~ group_size + treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                           family="poisson", data=total_twitches[which(total_twitches$ant_status=="NESTMATE") ,])
-
-
-Anova(model_nestmate_ni)
-
-
-post_hoc_nestmate_treat<- summary(glht(model_nestmate_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
-print(cld(post_hoc_nestmate_treat))
-#  C   P   S 
-# "a" "b" "b"
-
-
-##plot
-
-# post_hoc_nestmate_group<- summary(glht(model_nestmate_ni, linfct=mcp(group_size="Tukey")), test=adjusted("BH"))
-# print(cld(post_hoc_nestmate_group))
-
-
-# Model from Nathalie's code
-model_nestmate_ni_log <- glmer(log10(N+1/sqrt(2)) ~ group_size + treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+model_nestmate_ni_log <- glmer(N^0.1 ~ group_size * treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
                                family="gaussian", data=total_twitches[which(total_twitches$ant_status=="NESTMATE") ,])
 
+test_norm(residuals(model_nestmate_ni_log))
+
+
+Anova(model_nestmate_ni_log, type="III")
+
+
+model_nestmate_ni_log <- glmer(N^0.1 ~ group_size + treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                               family="gaussian", data=total_twitches[which(total_twitches$ant_status=="NESTMATE") ,])
+
+
 Anova(model_nestmate_ni_log)
+
 post_hoc_nestmate_treat_log <- summary(glht(model_nestmate_ni_log, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
 print(cld(post_hoc_nestmate_treat_log))
 #  C   P   S 
 # "a" "c" "b"
 
-test_norm(residuals(model_nestmate_ni_log))
-# skewness = 2.76
-# kurtosis = 11.54
-
-qqnorm(residuals(model_nestmate_ni_log))
-qqline(residuals(model_nestmate_ni_log))
-hist(residuals(model_nestmate_ni_log))
 
 
-# TO DO: CHECK WHICH MODEL IS BETTER
-# normality scores better for log but log10 fits graph better
+
 
 
 
@@ -919,50 +848,39 @@ hist(residuals(model_nestmate_ni_log))
 total_twitches_repetitive <- subset(total_twitches, twitch_repetition=="repetitive")
 
 
-model_focal_rep <- glmer(log(N+1) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                         family="poisson", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="FOCAL"),])
+model_focal_rep <- glmer(log(N+1/sqrt(2)) ~ group_size*treatment + offset(log(duration)) + (1|Replicate),
+                         family="gaussian", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="FOCAL"),])
 
 test_norm(residuals(model_focal_rep))
-# no transformation: skew=1.42, kurt=6.45
-# sqrt: skew=0.80, kurt=2.33
-# log: skew=0.74, kurt= 1.97
+
+
 
 qqnorm(residuals(model_focal_rep))
 qqline(residuals(model_focal_rep))
 hist(residuals(model_focal_rep))
 
-Anova(model, type="III")
+Anova(model_focal_rep, type="III")
 
-#no significant interaction so removed
-model_focal_rep_ni <- glmer(log(N+1) ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                            family="poisson", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="FOCAL"),])
+
+
+#significant interaction 
+
+model_focal_rep_ni <- glmer(log(N+1/sqrt(2)) ~ interac_size_treat + offset(log(duration)) + (1|Replicate),
+                            family="gaussian", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="FOCAL"),])
 
 
 Anova(model_focal_rep_ni, type="II")
 
 test_norm(residuals(model_focal_rep_ni))
-#log: skew=0.80, kurt=2.21
-
-summary(glht(model_focal_rep_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
-#             Estimate Std. Error z value Pr(>|z|)  
-# P - C == 0  18.4429   699.0867   0.026   0.9792  
-# S - C == 0  18.1870   699.0867   0.026   0.9792  
-# S - P == 0  -0.2559     0.1096  -2.336   0.0585 .
 
 
-summary(glht(model_focal_rep_ni, linfct=mcp(group_size="Tukey")), test=adjusted("BH"))
-#                Estimate Std. Error z value Pr(>|z|)    
-# 2 - 1 == 0    3.5142     0.5362   6.554 1.68e-10 ***
-# 6 - 1 == 0    3.7141     0.5364   6.925 2.62e-11 ***
-# 11 - 1 == 0   3.3583     0.5381   6.241 8.69e-10 ***
-# 6 - 2 == 0    0.1999     0.1299   1.539    0.148    
-# 11 - 2 == 0  -0.1559     0.1372  -1.137    0.256    
-# 11 - 6 == 0  -0.3559     0.1382  -2.575    0.015 *  
+h <- summary(glht(model_focal_rep_ni, linfct=mcp(interac_size_treat="Tukey")), test=adjusted("BH"))
+print(cld(h))
+
+# 1_C  1_P  1_S 11_C 11_P 11_S  2_C  2_P  2_S  6_C  6_P  6_S 
+# "a"  "a"  "a"  "a" "bc"  "b"  "a" "bc"  "c"  "a"  "d" "cd" 
 
 
-## TO DO: CHECK THESE STATS WITH ZEROS IN CONTROL COLUMNS
-## issues with zeros in code - no repetitive shakes in control so no differences found between C and P/S
-## sum of group size shakes to show difference
 
 
 
@@ -973,13 +891,10 @@ summary(glht(model_focal_rep_ni, linfct=mcp(group_size="Tukey")), test=adjusted(
 total_twitches_single <- subset(total_twitches, twitch_repetition=="single")
 
 
-model_focal_single <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                            family="poisson", data=total_twitches_single[which(total_twitches_single$ant_status=="FOCAL"),])
+model_focal_single <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate),
+                            family="gaussian", data=total_twitches_single[which(total_twitches_single$ant_status=="FOCAL"),])
 
 test_norm(residuals(model_focal_single))
-# no transformations: skew=0.88, kurt=2.56
-# sqrt: skew=0.46, kurt=0.02
-# log: skew=0.41, kurt=-0.08
 
 
 qqnorm(residuals(model_focal_single))
@@ -991,19 +906,18 @@ Anova(model_focal_single, type="III")
 
 
 #interaction is significant
-model_focal_single_interac <- glmer(sqrt(N) ~ interac_size_treat + offset(log(duration)) + (1|Replicate) + (1|time),
-                                    family="poisson", data=total_twitches_single[which(total_twitches_single$ant_status=="FOCAL"),])
+model_focal_single_interac <- glmer(sqrt(N) ~ interac_size_treat + offset(log(duration)) + (1|Replicate),
+                                    family="gaussian", data=total_twitches_single[which(total_twitches_single$ant_status=="FOCAL"),])
 
 test_norm(residuals(model_focal_single_interac))
-# skew=0.46, kurt=0.02
+
 
 model_focal_single_interac_tukey<- summary(glht(model_focal_single_interac, linfct=mcp(interac_size_treat="Tukey")), test=adjusted("BH"))
-print(cld(model_focal_single_interac_tukey)) #these post hocs make sense when looking at the graph (sort of)
+print(cld(model_focal_single_interac_tukey)) 
 # 1_C  1_P  1_S 11_C 11_P 11_S  2_C  2_P  2_S  6_C  6_P  6_S 
-# "ab"  "d" "bc"  "a"  "f"  "f" "cd"  "f"  "e" "ac"  "f"  "f" 
+# "a"  "b" "ab"  "a" "de" "cd" "ab"  "c"  "c" "ab"  "e"  "e" 
 
 
-## does data need to be transformed if it is already within the thresholds for skew and kurt????
 
 
 
@@ -1018,13 +932,11 @@ print(cld(model_focal_single_interac_tukey)) #these post hocs make sense when lo
 
 total_twitches_small <- subset(total_twitches, twitch_size =="small")
 
-model_focal_small <- glmer(log(N+1) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                           family="poisson", data=total_twitches_small[which(total_twitches_small$ant_status=="FOCAL"),])
+model_focal_small <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate),
+                           family="gaussian", data=total_twitches_small[which(total_twitches_small$ant_status=="FOCAL"),])
 
 test_norm(residuals(model_focal_small))
-# no transformation: skew=0.90, kurt=2.09
-# sqrt: skew=0.70 , kurt=0.67
-# log: skew=0.69, kurt=0.61
+
 
 
 qqnorm(residuals(model_focal_small))
@@ -1033,9 +945,9 @@ hist(residuals(model_focal_small))
 
 Anova(model_focal_small, type="III")
 
-#interact non sig
-model_focal_small_ni <- glmer(log(N+1) ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                              family="poisson", data=total_twitches_small[which(total_twitches_small$ant_status=="FOCAL"),])
+#interact sig
+model_focal_small_ni <- glmer(sqrt(N) ~ interac_size_treat + offset(log(duration)) + (1|Replicate),
+                           family="gaussian", data=total_twitches_small[which(total_twitches_small$ant_status=="FOCAL"),])
 
 test_norm(residuals(model_focal_small_ni))
 
@@ -1043,28 +955,10 @@ test_norm(residuals(model_focal_small_ni))
 Anova(model_focal_small_ni)
 
 
-post_hoc_treatment <- summary(glht(model_focal_small_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
-#                Estimate Std. Error z value Pr(>|z|)    
-#   P - C == 0   3.2507     0.3211  10.125  < 2e-16 ***
-#   S - C == 0   2.7920     0.3227   8.652  < 2e-16 ***
-#   S - P == 0  -0.4587     0.1030  -4.454 8.44e-06 ***
-
-print(cld(post_hoc_treatment))
-# C   P   S 
-# "a" "c" "b" 
-
-post_hoc_group <- summary(glht(model_focal_small_ni, linfct=mcp(group_size="Tukey")), test=adjusted("BH"))
-#              Estimate Std. Error z value Pr(>|z|)  
-# 2 - 1 == 0   1.978984   0.254701   7.770 1.64e-14 ***
-# 6 - 1 == 0   2.233810   0.254205   8.787  < 2e-16 ***
-# 11 - 1 == 0  1.985828   0.255760   7.764 1.64e-14 ***
-# 6 - 2 == 0   0.254826   0.123559   2.062   0.0588 .  
-# 11 - 2 == 0  0.006844   0.127356   0.054   0.9571    
-# 11 - 6 == 0 -0.247982   0.126650  -1.958   0.0603 .
-
-print(cld(post_hoc_group))
-# 1   2   6  11 
-# "a" "b" "b" "b" 
+post_hoc <- summary(glht(model_focal_small_ni, linfct=mcp(interac_size_treat="Tukey")), test=adjusted("BH"))
+print(cld(post_hoc))
+# 1_C  1_P  1_S 11_C 11_P 11_S  2_C  2_P  2_S  6_C  6_P  6_S 
+# "a" "bc" "ab" "ab" "ef" "cd" "ab" "de"  "d" "ab"  "f"  "e" 
 
 
 
@@ -1079,13 +973,11 @@ print(cld(post_hoc_group))
 total_twitches_large <- subset(total_twitches, twitch_size =="large")
 
 
-model_focal_large <- glmer(log(N+1) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time),
-                           family="poisson", data=total_twitches_large[which(total_twitches_large$ant_status=="FOCAL"),])
+model_focal_large <- glmer(log(N+1/sqrt(2)) ~ group_size*treatment + offset(log(duration)) + (1|Replicate),
+                           family="gaussian", data=total_twitches_large[which(total_twitches_large$ant_status=="FOCAL"),])
 
 test_norm(residuals(model_focal_large))
-# no transformation: skew=1.34, kurt=4.79
-# sqrt: skew=0.65, kurt=0.52
-# log: skew=0.56 , kurt=0.19
+
 
 
 qqnorm(residuals(model_focal_large))
@@ -1096,23 +988,18 @@ Anova(model_focal_large, type="III")
 
 #interaction significant
 
-model_focal_interac_large <- glmer(log(N+1) ~ interac_size_treat + offset(log(duration)) + (1|Replicate) + (1|time),
-                                   family="poisson", data=total_twitches_large[which(total_twitches_large$ant_status=="FOCAL"),])
+model_focal_interac_large <- glmer(log(N+1/sqrt(2)) ~ interac_size_treat + offset(log(duration)) + (1|Replicate),
+                                   family="gaussian", data=total_twitches_large[which(total_twitches_large$ant_status=="FOCAL"),])
 
 
 
-qqnorm(residuals(model_focal_interac_large))
-qqline(residuals(model_focal_interac_large))
-hist(residuals(model_focal_interac_large))
 
 
 model_focal_large_interac_tukey<- summary(glht(model_focal_interac_large, linfct=mcp(interac_size_treat="Tukey")), test=adjusted("BH"))
 print(cld(model_focal_large_interac_tukey))
-# 1_C    1_P    1_S   11_C   11_P   11_S    2_C    2_P    2_S    6_C    6_P    6_S 
-# "b"    "a"   "ab" "abcd"    "d"   "cd"   "ab"   "cd"    "d"    "b"    "c"   "cd" 
 
-## TO DO: CHECK POST HOCS AGAINST GRAPH
-## LOOK AT ZEROS (11C?)
+# 1_C  1_P  1_S 11_C 11_P 11_S  2_C  2_P  2_S  6_C  6_P  6_S 
+# "a"  "a"  "a"  "a"  "b"  "b"  "a"  "b"  "b"  "a"  "c"  "c" 
 
 
 
@@ -1129,15 +1016,14 @@ print(cld(model_focal_large_interac_tukey))
 
 ### TOTAL NUMBER OF REPETITVE SHAKES PERFORMED BY NESTMATES
 ##issues with this model
+## high kurtosis
 
 
-model_nestmate_repetitive <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                                   family="poisson", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="NESTMATE"),])
+model_nestmate_repetitive <- glmer(N^0.1 ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                                   family="gaussian", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="NESTMATE"),])
 
 test_norm(residuals(model_nestmate_repetitive))
-# no transformation: iterations did not converge
-# sqrt: skew=3.40, kurt=21.15
-# log (c=1): skew=3.53, kurt=21.61
+
 
 
 qqnorm(residuals(model_nestmate_repetitive))
@@ -1147,24 +1033,18 @@ hist(residuals(model_nestmate_repetitive))
 Anova(model_nestmate_repetitive, type="III")
 
 #interaction non significant
-model_nestmate_repetitive_ni <- glmer(sqrt(N) ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                                      family="poisson", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="NESTMATE"),])
+model_nestmate_repetitive_ni <- glmer(N^0.1 ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                                      family="gaussian", data=total_twitches_repetitive[which(total_twitches_repetitive$ant_status=="NESTMATE"),])
 
 
 
 Anova(model_nestmate_repetitive_ni, type="II")
 
 summary(glht(model_nestmate_repetitive_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
-# Estimate Std. Error z value Pr(>|z|)    
-# P - C == 0   2.8146     0.5224   5.387 2.15e-07 ***
-# S - C == 0   2.3215     0.5230   4.439 1.36e-05 ***
-# S - P == 0  -0.4931     0.3046  -1.619    0.106 
 
 
-# summary(glht(model_nestmate_repetitive_ni, linfct=mcp(group_size="Tukey")), test=adjusted("BH"))
 
-### TO DO: CHECK THE ZEROS
-## issues with zeros in code - no repetitive shakes in control so no differences found between C and P/S
+
 
 
 
@@ -1173,8 +1053,8 @@ summary(glht(model_nestmate_repetitive_ni, linfct=mcp(treatment="Tukey")), test=
 
 ### TOTAL NUMBER OF SINGLE SHAKES PERFORMED BY NESTMATES
 
-model_nestmate_single <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                               family="poisson", data=total_twitches_single[which(total_twitches_single$ant_status=="NESTMATE"),])
+model_nestmate_single <- glmer(N^0.1 ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                               family="gaussian", data=total_twitches_single[which(total_twitches_single$ant_status=="NESTMATE"),])
 
 
 test_norm(residuals(model_nestmate_single))
@@ -1190,24 +1070,17 @@ hist(residuals(model_nestmate_single))
 Anova(model_nestmate_single, type="III")
 
 #interaction non-sig
-model__nestmate_single_ni <- glmer(sqrt(N) ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                                   family="poisson", data=total_twitches_single[which(total_twitches_single$ant_status=="NESTMATE"),])
+model__nestmate_single_ni <- glmer(N^0.1  ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                                   family="gaussian", data=total_twitches_single[which(total_twitches_single$ant_status=="NESTMATE"),])
 
 
 Anova(model__nestmate_single_ni, type="II")
 
 post_hoc_nestmate <- summary(glht(model__nestmate_single_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
 
-#               Estimate Std. Error z value  Pr(>|z|)    
-#   P - C == 0   1.6273     0.2537   6.415 4.22e-10 ***
-#   S - C == 0   1.2212     0.2457   4.970 1.00e-06 ***
-#   S - P == 0  -0.4061     0.2224  -1.826   0.0678 . 
 
 print(cld(post_hoc_nestmate))
-#  C   P   S 
-# "a" "b" "b" 
 
-# CHECK THIS MATCHES GRAPHS
 
 
 
@@ -1223,13 +1096,11 @@ print(cld(post_hoc_nestmate))
 ### TOTAL NUMBER OF SMALL SHAKES PERFORMED BY NESTMATES
 
 
-model_nestmate_small <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                              family="poisson", data=total_twitches_small[which(total_twitches_small$ant_status=="NESTMATE"),])
+model_nestmate_small <- glmer(N^0.1 ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                              family="gaussian", data=total_twitches_small[which(total_twitches_small$ant_status=="NESTMATE"),])
 
 test_norm(residuals(model_nestmate_small))
-# no transformation: skew=3.01, kurt=18.01
-# sqrt: skew=2.43, kurt=7.56
-# log: skew=2.51, kurt=8.06
+
 
 
 qqnorm(residuals(model_nestmate_small))
@@ -1239,8 +1110,8 @@ hist(residuals(model_nestmate_small))
 Anova(model_nestmate_small, type="III")
 
 #interact non sig
-model_nestmate_small_ni <- glmer(sqrt(N) ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                                 family="poisson", data=total_twitches_small[which(total_twitches_small$ant_status=="NESTMATE"),])
+model_nestmate_small_ni <- glmer(N^0.1 ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                                 family="gaussian", data=total_twitches_small[which(total_twitches_small$ant_status=="NESTMATE"),])
 
 test_norm(residuals(model_nestmate_small_ni))
 
@@ -1249,16 +1120,12 @@ Anova(model_nestmate_small_ni)
 
 
 post_hocs <- summary(glht(model_nestmate_small_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
-#              Estimate Std. Error z value Pr(>|z|)    
-# P - C == 0   1.9797     0.2912   6.798 3.19e-11 ***
-# S - C == 0   1.3740     0.2854   4.814 2.22e-06 ***
-# S - P == 0  -0.6057     0.2361  -2.566   0.0103 *   
+
 
 print(cld(post_hocs))
 #   C   P   S 
 # "a" "c" "b" 
 
-# summary(glht(model_focal_small_ni, linfct=mcp(group_size="Tukey")), test=adjusted("BH"))
 
 
 
@@ -1267,14 +1134,11 @@ print(cld(post_hocs))
 
 ### TOTAL NUMBER OF LARGE SHAKES PERFORMED BY NESTMATES
 
-model_nestmate_large <- glmer(sqrt(N) ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                              family="poisson", data=total_twitches_large[which(total_twitches_large$ant_status=="NESTMATE"),])
+model_nestmate_large <- glmer(N^0.1 ~ group_size*treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                              family="gaussian", data=total_twitches_large[which(total_twitches_large$ant_status=="NESTMATE"),])
 
 
 test_norm(residuals(model_nestmate_large))
-# no transformation: skew=2.59, kurt=15.27
-# sqrt: skew=2.21, kurt=5.91
-# log: skew=2.26, kurt=6.08
 
 
 
@@ -1286,8 +1150,8 @@ Anova(model_nestmate_large, type="III")
 
 
 #interaction non-significant
-model_nestmate_large_ni <- glmer(sqrt(N) ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
-                                 family="poisson", data=total_twitches_large[which(total_twitches_large$ant_status=="NESTMATE"),])
+model_nestmate_large_ni <- glmer(N^0.1 ~ group_size+treatment + offset(log(duration)) + (1|Replicate) + (1|time) + (1|Petri_dish),
+                                 family="gaussian", data=total_twitches_large[which(total_twitches_large$ant_status=="NESTMATE"),])
 
 
 test_norm(residuals(model_nestmate_large_ni))
@@ -1297,19 +1161,9 @@ Anova(model_nestmate_large_ni, type="II")
 
 
 post_hocs <- summary(glht(model_nestmate_large_ni, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
-#             Estimate Std. Error z value Pr(>|z|)    
-# P - C == 0   1.5664     0.2783   5.629 5.45e-08 ***
-# S - C == 0   1.3782     0.2677   5.149 3.94e-07 ***
-# S - P == 0  -0.1882     0.2379  -0.791    0.429    
+ 
 
 print(cld(post_hocs))
-#  C   P   S 
-# "a" "b" "b" 
-
-
-# sqrt and poisson
-
-
 
 
 
