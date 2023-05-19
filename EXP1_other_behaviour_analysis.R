@@ -222,11 +222,33 @@ behaviour_table[which(!is.na(match   (   behaviour_table$full_ant_ID,escapes$ful
 
 behaviour_table$interac_size_treat <- with (behaviour_table, interac_size_treat <- paste(group_size,treatment,sep="_"))
 
+
+
+
+#remove summer focals
+
+behaviour_table$Replicate <- as.numeric(behaviour_table$Replicate)
+behaviour_table$rep_set <- "1"
+behaviour_table [ which (behaviour_table$Replicate > 16 ) , "rep_set" ] <- "2"
+
+
+###remove summer focals
+rep_set_one <- subset(self_groom, rep_set=="1")
+rep_set_two <- subset(self_groom, rep_set=="2")
+
+summer_nestmates <- subset(rep_set_two, ant_status=="NESTMATE")
+
+behaviour_table <- rbind(rep_set_one, summer_nestmates)
+
+
+
+
+
 #########################################
 ###### GRAPHS FOR OTHER BEHAVIOURS ######
 #########################################
 
-install.packages("gridExtra")
+#install.packages("gridExtra")
 library(gridExtra)
 
 
@@ -237,78 +259,96 @@ library(gridExtra)
 self_groom <- subset(behaviour_table, behaviour=="self_grooming")
 
 self_groom <- subset(behaviour_table, behaviour=="self_grooming")
-self_groom$recording_duration <- self_groom$recording_duration / 60
+# self_groom$recording_duration <- self_groom$recording_duration / 60
 self_groom$frequency <- self_groom$N / self_groom$recording_duration
 
 
-mean_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=mean, data=self_groom)
+mean_status1 <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=mean, data=self_groom)
 error_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=standard_error, data=self_groom)
 
-mean_status$se <- error_status$frequency
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
+mean_status1$se <- error_status$frequency
+colnames(mean_status1) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
+mean_status1$Group_size <- factor(mean_status1$Group_size,
                                  levels=c("1", "2", "6", "11"))
 
-cld <- c("bc", "b", "a", "a", "c", "de", "bc", "c", "e", "de", "d", "b", "", "", "", "", "", "", "", "", "") #poisson results
+mean_status1[which(mean_status1$Treatment=="C"), "Treatment"] <- "Control"
+mean_status1[which(mean_status1$Treatment=="S"), "Treatment"] <- "Sham"
+mean_status1[which(mean_status1$Treatment=="P"), "Treatment"] <- "Pathogen"
 
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
+
+x <- ggplot(mean_status1, aes(fill=Treatment, y=Mean, x=Group_size)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
-  geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
+  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean number of self-grooming per ant per minute")+
+  labs(x="Group size", y="Mean number self-groom", title="Mean number of self-grooming events per ant per minute")+
   #ylim(0,0.3)+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=15),
+        legend.title=element_blank(), legend.text=element_text(size=16), axis.text=element_text(size=15), strip.text=element_text(size=15),
+        axis.title.y=element_text(size=16), legend.position = "bottom", plot.title =element_text(size=18, face="italic"), plot.title.position="panel" )
 
 
 ## just treatment
 
-mean_status <- aggregate( frequency ~  treatment + ant_status, FUN=mean, data=self_groom)
+mean_status2 <- aggregate( frequency ~  treatment + ant_status, FUN=mean, data=self_groom)
 error_status <- aggregate( frequency ~  treatment + ant_status, FUN=standard_error, data=self_groom)
 
-mean_status$se <- error_status$frequency
-colnames(mean_status) <- c("Treatment", "ant_status", "Mean", "standard_error")
+mean_status2$se <- error_status$frequency
+colnames(mean_status2) <- c("Treatment", "ant_status", "Mean", "standard_error")
 
 
+mean_status2[which(mean_status2$Treatment=="C"), "Treatment"] <- "Control"
+mean_status2[which(mean_status2$Treatment=="S"), "Treatment"] <- "Sham"
+mean_status2[which(mean_status2$Treatment=="P"), "Treatment"] <- "Pathogen"
 
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Treatment)) +
+y <- ggplot(mean_status2, aes(fill=Treatment, y=Mean, x=Treatment)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
-  labs(x="Treatment", y="Mean duration of self-grooming per ant per minute")+
+  labs(x="Treatment", y="Mean number self-groom", title="Treatment only")+
   #ylim(0,0.3)+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
+  guides(fill="none")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=16),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=16), plot.title = element_text(size=16, face="italic") )
 
 
 ## just group size
 
-mean_status <- aggregate( frequency ~  group_size + ant_status, FUN=mean, data=self_groom)
+mean_status4 <- aggregate( frequency ~  group_size + ant_status, FUN=mean, data=self_groom)
 error_status <- aggregate( frequency ~  group_size + ant_status, FUN=standard_error, data=self_groom)
 
-mean_status$se <- error_status$frequency
-colnames(mean_status) <- c("Group_size", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
+mean_status4$se <- error_status$frequency
+colnames(mean_status4) <- c("Group_size", "ant_status", "Mean", "standard_error")
+mean_status4$Group_size <- factor(mean_status4$Group_size,
                                  levels=c("1", "2", "6", "11"))
 
 
-ggplot(mean_status, aes(fill=Group_size, y=Mean, x=Group_size)) +
+z <- ggplot(mean_status4, aes(fill=Group_size, y=Mean, x=Group_size)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean number of self-grooming events per ant per minute")+
+  labs(x="Group size", y="Mean number self-groom", title="Group size only")+
   #ylim(0,0.3)+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
+  guides(fill="none")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto", colour = "black"), axis.title = element_text(size=16),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=16), plot.title = element_text(size=16, face="italic") )
+
+
+hlay <- rbind(c(1,1,1,1),
+              c(1,1,1,1),
+              c(2,2,3,3),
+              c(2,2,3,3))
+
+
+grid.arrange(x,y,z, layout_matrix=hlay)
+
 
 
 
@@ -316,267 +356,99 @@ ggplot(mean_status, aes(fill=Group_size, y=Mean, x=Group_size)) +
 ### SELF GROOMING DURATION ###
 
 
+self_groom <- subset(behaviour_table, behaviour=="self_grooming")
 
-mean_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=mean, data=self_groom)
+self_groom <- subset(behaviour_table, behaviour=="self_grooming")
+# self_groom$recording_duration <- self_groom$recording_duration / 60
+self_groom$event_duration <- self_groom$event_duration / self_groom$recording_duration
+
+
+mean_status6 <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=mean, data=self_groom)
 error_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=standard_error, data=self_groom)
 
-mean_status$se <- error_status$event_duration
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
+mean_status6$se <- error_status$event_duration
+colnames(mean_status6) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
+mean_status6$Group_size <- factor(mean_status6$Group_size,
                                  levels=c("1", "2", "6", "11"))
 
+mean_status6[which(mean_status6$Treatment=="C"), "Treatment"] <- "Control"
+mean_status6[which(mean_status6$Treatment=="S"), "Treatment"] <- "Sham"
+mean_status6[which(mean_status6$Treatment=="P"), "Treatment"] <- "Pathogen"
 
 
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
+a <- ggplot(mean_status6, aes(fill=Treatment, y=Mean, x=Group_size)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean duration of self-grooming per ant per minute")+
+  labs(x="Group size", y="Mean duration (s)", title="Mean duration of self-grooming events per ant per minute (s)")+
   #ylim(0,0.3)+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=15),
+        legend.title=element_blank(), legend.text=element_text(size=16), axis.text=element_text(size=15), strip.text=element_text(size=15),
+        axis.title.y=element_text(size=16), legend.position = "bottom", plot.title =element_text(size=18, face="italic"), plot.title.position="panel" )
+
 
 ## just treatment
 
-mean_status <- aggregate( event_duration ~  treatment + ant_status, FUN=mean, data=self_groom)
+mean_status7 <- aggregate( event_duration ~  treatment + ant_status, FUN=mean, data=self_groom)
 error_status <- aggregate( event_duration ~  treatment + ant_status, FUN=standard_error, data=self_groom)
 
-mean_status$se <- error_status$event_duration
-colnames(mean_status) <- c("Treatment", "ant_status", "Mean", "standard_error")
+mean_status7$se <- error_status$event_duration
+colnames(mean_status7) <- c("Treatment", "ant_status", "Mean", "standard_error")
 
 
+mean_status7[which(mean_status7$Treatment=="C"), "Treatment"] <- "Control"
+mean_status7[which(mean_status7$Treatment=="S"), "Treatment"] <- "Sham"
+mean_status7[which(mean_status7$Treatment=="P"), "Treatment"] <- "Pathogen"
 
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Treatment)) +
+b <- ggplot(mean_status7, aes(fill=Treatment, y=Mean, x=Treatment)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
-  labs(x="Treatment", y="Mean duration of self-grooming per ant per minute")+
+  labs(x="Treatment", y="Mean duration (s)", title="Treatment only")+
   #ylim(0,0.3)+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
+  guides(fill="none")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=16),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=16), plot.title = element_text(size=16, face="italic") )
 
 
 ## just group size
 
-mean_status <- aggregate( event_duration ~  group_size + ant_status, FUN=mean, data=self_groom)
+mean_status8 <- aggregate( event_duration ~  group_size + ant_status, FUN=mean, data=self_groom)
 error_status <- aggregate( event_duration ~  group_size + ant_status, FUN=standard_error, data=self_groom)
 
-mean_status$se <- error_status$event_duration
-colnames(mean_status) <- c("Group_size", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
+mean_status8$se <- error_status$event_duration
+colnames(mean_status8) <- c("Group_size", "ant_status", "Mean", "standard_error")
+mean_status8$Group_size <- factor(mean_status8$Group_size,
                                  levels=c("1", "2", "6", "11"))
 
 
-ggplot(mean_status, aes(fill=Group_size, y=Mean, x=Group_size)) +
+c <- ggplot(mean_status8, aes(fill=Group_size, y=Mean, x=Group_size)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
   facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean duration of self-grooming per ant per minute")+
-  #ylim(0,0.3)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-
-
-
-
-
-### ALLOGROOMING FOCAL ANT NB EVENTS ###
-
-
-
-allo_focal <- subset(behaviour_table, behaviour=="grooming_focal_ant")
-allo_focal <- subset(allo_focal, ant_status=="NESTMATE")
-
-
-allo_focal$recording_duration <- allo_focal$recording_duration / 60
-allo_focal$frequency <- allo_focal$N / allo_focal$recording_duration
-
-
-mean_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=mean, data=allo_focal)
-error_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=standard_error, data=allo_focal)
-
-mean_status$se <- error_status$frequency
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
-                                 levels=c("1", "2", "6", "11"))
-
-
-
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
-  #facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean Nb allo-groom focal ant")+
+  labs(x="Group size", y="Mean duration (s)", title="Group size only")+
   #ylim(0,0.3)+
   theme_bw()+
   guides(fill="none")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto", colour = "black"), axis.title = element_text(size=16),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=16), plot.title = element_text(size=16, face="italic") )
 
 
+hlay <- rbind(c(1,1,1,1),
+              c(1,1,1,1),
+              c(2,2,3,3),
+              c(2,2,3,3))
 
 
-### ALLOGROOMING FOCAL ANT EVENT DURATION ###
+grid.arrange(a,b,c, layout_matrix=hlay)
 
-
-
-mean_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=mean, data=allo_focal)
-error_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=standard_error, data=allo_focal)
-
-mean_status$se <- error_status$event_duration
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
-                                 levels=c("1", "2", "6", "11"))
-
-
-
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
-  #facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean duration allo-groom focal ant")+
-  #ylim(0,0.3)+
-  theme_bw()+
-  guides(fill="none")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-
-
-
-
-### ALLOGROOMING NESTMATES NB EVENTS ###
-
-
-
-allo_nestmates <- subset(behaviour_table, behaviour=="grooming_other_nestmates")
-
-
-
-allo_nestmates$recording_duration <- allo_nestmates$recording_duration / 60
-allo_nestmates$frequency <- allo_nestmates$N / allo_nestmates$recording_duration
-
-
-mean_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=mean, data=allo_nestmates)
-error_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=standard_error, data=allo_nestmates)
-
-mean_status$se <- error_status$frequency
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
-                                 levels=c("1", "2", "6", "11"))
-
-
-
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
-  facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean Nb of allo-groom nestmates")+
-  #ylim(0,0.3)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-
-
-allo_nestmates1 <- subset(allo_nestmates, ant_status=="NESTMATE")
-
-
-
-mean_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=mean, data=allo_nestmates1)
-error_status <- aggregate( frequency ~ group_size + treatment + ant_status, FUN=standard_error, data=allo_nestmates1)
-
-mean_status$se <- error_status$frequency
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
-                                 levels=c("1", "2", "6", "11"))
-
-
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
-  #facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean Nb of allo-groom nestmates")+
-  #ylim(0,0.3)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-
-
-
-### ALLOGROOMING NESTMATES DURATION ###
-
-
-
-
-mean_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=mean, data=allo_nestmates)
-error_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=standard_error, data=allo_nestmates)
-
-mean_status$se <- error_status$event_duration
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
-                                 levels=c("1", "2", "6", "11"))
-
-
-
-ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
-  facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean duration allo-groom nestmates")+
-  #ylim(0,0.3)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-
-
-
-
-
-  
-mean_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=mean, data=allo_nestmates1)
-error_status <- aggregate( event_duration ~ group_size + treatment + ant_status, FUN=standard_error, data=allo_nestmates1)
-
-mean_status$se <- error_status$event_duration
-colnames(mean_status) <- c("Group_size", "Treatment", "ant_status", "Mean", "standard_error")
-mean_status$Group_size <- factor(mean_status$Group_size,
-                                 levels=c("1", "2", "6", "11"))
-
-
-
-d <- ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  #geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
-  #facet_wrap(~ant_status) +
-  labs(x="Group size", y="Mean duration allo-groom nestmates")+
-  #ylim(0,0.3)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
 
 
 
@@ -624,11 +496,11 @@ a <- ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
   guides(fill="none")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title.x = element_blank(),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=16), plot.title=element_text(size=20) )
 
 
 
-legend <- get_legend(a)
+# legend <- get_legend(a)
 
 
 
@@ -656,22 +528,22 @@ b <- ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
   facet_wrap(~Behaviour, labeller = labeller(Behaviour = 
                                                c("grooming_other_nestmates" = "Grooming other nestmates",
                                                  "grooming_focal_ant" = "Grooming focal ant"))) +
-  labs(x="Group size", y="Mean Duration")+
+  labs(x="Group size", y="Mean Duration (s)")+
   #ylim(0,0.3)+
   theme_bw()+
-  guides(fill="none")+
+  #guides(fill="none")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=16), legend.position = "bottom" )
 
 
-hlay <- rbind(c(1,1,1,NA),
-              c(1,1,1,3),
-              c(2,2,2,3),
-              c(2,2,2,NA))
+hlay <- rbind(c(1,1,1),
+              c(1,1,1),
+              c(2,2,2),
+              c(2,2,2))
 
 
-grid.arrange(a,b,legend, layout_matrix=hlay)
+grid.arrange(a,b, layout_matrix=hlay)
 
 
 
@@ -705,6 +577,8 @@ behaviour_table$group_size <- factor(behaviour_table$group_size)
 ### STRUGGLING TO GET BELOW NORMALITY THRESHOLD ###
 ## TRY WITH POISSON ##
 
+
+
 self_grooming_Nb <- glmer(log(N+1/sqrt(2)) ~ treatment*group_size + offset(log(recording_duration)) + (1|Replicate),
                          family="gaussian", data=self_groom[which(self_groom$ant_status=="FOCAL"),])
 
@@ -729,26 +603,27 @@ Anova(self_grooming_Nb)
 
 
 p <- summary(glht(self_grooming_Nb, linfct=mcp(treatment="Tukey")), test=adjusted("BH"))
+print(cld(p))
 g <- summary(glht(self_grooming_Nb, linfct=mcp(group_size="Tukey")), test=adjusted("BH"))
 print(cld(g))
 ## these results match the graph so maybe its okay, double check
 
 
-##poisson?
-self_grooming_Nb <- glmer(N ~ treatment*group_size + offset(log(recording_duration)) + (1|Replicate),
-                          family="poisson", data=self_groom[which(self_groom$ant_status=="FOCAL"),])
-
-hist(residuals(self_grooming_Nb))
-
-Anova(self_grooming_Nb, type="III")
-
-self_grooming_Nb <- glmer(N ~ interac_size_treat + offset(log(recording_duration)) + (1|Replicate),
-                          family="poisson", data=self_groom[which(self_groom$ant_status=="FOCAL"),])
-
-
-g <- summary(glht(self_grooming_Nb, linfct=mcp(interac_size_treat="Tukey")), test=adjusted("BH"))
-
-print(cld(g))
+# ##poisson?
+# self_grooming_Nb <- glmer(N ~ treatment*group_size + offset(log(recording_duration)) + (1|Replicate),
+#                           family="poisson", data=self_groom[which(self_groom$ant_status=="FOCAL"),])
+# 
+# hist(residuals(self_grooming_Nb))
+# 
+# Anova(self_grooming_Nb, type="III")
+# 
+# self_grooming_Nb <- glmer(N ~ interac_size_treat + offset(log(recording_duration)) + (1|Replicate),
+#                           family="poisson", data=self_groom[which(self_groom$ant_status=="FOCAL"),])
+# 
+# 
+# g <- summary(glht(self_grooming_Nb, linfct=mcp(interac_size_treat="Tukey")), test=adjusted("BH"))
+# 
+# print(cld(g))
 
 
 
