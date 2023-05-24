@@ -1,3 +1,70 @@
+####function
+get_posthoc_groups <- function(model,contrast_matrix,which_levels,dataset,interaction_variables=NULL){
+  levels <- get(which_levels)
+  if (is.null(names(levels))){
+    names(levels) <- paste("Delta_",levels,sep="")
+  }
+  
+  post_hoc <- summary(glht(model,contrast_matrix),test=adjusted("BH"))
+  # print("z value");print(post_hoc$test$tstat);print("Pr>|z|");print(post_hoc$test$pvalues);
+  p_values <- as.numeric(post_hoc$test$pvalues);names(p_values) <- names(post_hoc$test$coefficients)
+  
+  post_hoc_levels <- names(levels)
+  post_hoc_mat <- matrix(NA,nrow=length(post_hoc_levels)-1,ncol=length(post_hoc_levels)-1)
+  rownames(post_hoc_mat) <- post_hoc_levels[2:length(post_hoc_levels)]
+  colnames(post_hoc_mat) <- post_hoc_levels[1:(length(post_hoc_levels)-1)]
+  for (i in 1:nrow(post_hoc_mat)){
+    for (j in 1:i){
+      post_hoc_mat[i,j] <- as.logical(as.numeric(p_values[paste(colnames(post_hoc_mat)[j]," - ",rownames(post_hoc_mat)[i],sep="")])>0.05)
+    }
+  }
+  g <- post_hoc_mat
+  g <- cbind(rbind(NA, g), NA)
+  g <- replace(g, is.na(g), FALSE)
+  g <- g + t(g)
+  diag(g) <- 1
+  n <- length(post_hoc_levels)
+  rownames(g) <- 1:n
+  colnames(g) <- 1:n
+  #g
+  same <- which(g==1)
+  topology <- data.frame(N1=((same-1) %% n) + 1, N2=((same-1) %/% n) + 1)
+  topology <- topology[order(topology[[1]]),] # Get rid of loops and ensure right naming of vertices
+  g3 <- simplify(graph.data.frame(topology,directed = FALSE))
+  #get.data.frame(g3)
+  #plot(g3)
+  res <- maximal.cliques(g3)
+  
+  # Reorder given the smallest level
+  clique_value <- NULL
+  if (which_levels=="groups"){
+    form <- as.formula(paste("variable ~ ", paste(interaction_variables, collapse= "+")))
+  }else{
+    form <- as.formula(paste("variable ~ ", paste(gsub("_order","",which_levels), collapse= "+")))
+  }
+  
+  means <- aggregate(form,FUN=mean,data=dataset)
+  means$predictor <- names(levels)[match(paste(means[,interaction_variables[1]],means[,interaction_variables[2]],sep="_"),levels)]
+  for (i in 1:length(res)){
+    clique_value <- c(clique_value,mean(means[as.numeric(unlist(res[[i]])),"variable"]))
+  }
+  res <- res[order(clique_value)]
+  
+  # Get group letters
+  lab.txt <- vector(mode="list", n)
+  lab <- letters[seq(res)]
+  for(i in seq(res)){
+    for(j in res[[i]]){
+      lab.txt[[j]] <- paste0(lab.txt[[j]], lab[i])
+    }
+  }
+  post_hoc_groups <- unlist(lab.txt); names(post_hoc_groups) <- levels[post_hoc_levels]
+  return(post_hoc_groups)
+}
+
+###libraries
+library(multcomp)
+library(igraph)
 
 ########################################
 ##### NB SHAKES PER MINUTE PER ANT #####
@@ -231,10 +298,19 @@ shake_time_table1 [ which (shake_time_table1$Replicate > 16 ) , "time" ] <- "SUM
 
 
 ### FOCAL MODEL ###
-
-
-model_focal <- glmer(N^0.1 ~ group_size*treatment+smins + offset(log(duration)) + (1|Replicate),
+model_focal <- glmer(N^0.1 ~ group_size*treatment*smins + offset(log(duration)) + (1|Replicate),
                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
+
+
+model_focal <- glmer(N^0.1 ~ group_size*treatment+group_size*smins+ treatment*smins+ offset(log(duration)) + (1|Replicate),
+                     family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
+
+model_focal <- glmer(N^0.1 ~ group_size*treatment+ treatment*smins+ offset(log(duration)) + (1|Replicate),
+                     family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
+
+
+# model_focal <- glmer(N^0.1 ~ group_size*treatment+smins + offset(log(duration)) + (1|Replicate),
+#                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
 
 qqnorm(residuals(model_focal))
 qqline(residuals(model_focal))
@@ -244,8 +320,177 @@ test_norm(residuals(model_focal))
 
 Anova(model_focal, type="III")
 
-post_hoc_smins <- summary(glht(model_focal, linfct=mcp(smins="Tukey")), test=adjusted("BH"))
+# post_hoc_smins <- summary(glht(model_focal, linfct=mcp(smins="Tukey")), test=adjusted("BH"))
+contrast_matrix <- rbind(
+  "1 - 2"=c(0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+  ,
+  "1 - 3"=c(0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0)
+  ,
+  "1 - 4"=c(0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0)
+  ,
+  "1 - 5"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0)
+  ,
+  "1 - 6"=c(0,0,0,0,0,-1,-1,0,0,0,0,0,-0.25,-0.25,-0.25,0,-1,0,0,0,0)
+  ,
+  "1 - 7"=c(0,0,0,0,0,-1,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0)
+  ,
+  "1 - 8"=c(0,0,0,0,0,-1,0,0,-1,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1)
+  ,
+  "1 - 9"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,0,0)
+  ,
+  "1 - 10"=c(0,0,0,0,-1,0,-1,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0,0,0,0)
+  ,
+  "1 - 11"=c(0,0,0,0,-1,0,0,-1,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1,0,0,0)
+  ,
+  "1 - 12"=c(0,0,0,0,-1,0,0,0,-1,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,-1,0)
+  ,
+  "2 - 3"=c(0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0)
+  ,
+  "2 - 4"=c(0,0,0,0,0,0,1,0,-1,0,0,0,0,0,0,0,0,0,0,0,0)
+  ,
+  "2 - 5"=c(0,0,0,0,0,-1,1,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0)
+  ,
+  "2 - 6"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,-1,0,0,0,0)
+  ,
+  "2 - 7"=c(0,0,0,0,0,-1,1,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0)
+  ,
+  "2 - 8"=c(0,0,0,0,0,-1,1,0,-1,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1)
+  ,
+  "2 - 9"=c(0,0,0,0,-1,0,1,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,0,0)
+  ,
+  "2 - 10"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0,0,0,0)
+  ,
+  "2 - 11"=c(0,0,0,0,-1,0,1,-1,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1,0,0,0)
+  ,
+  "2 - 12"=c(0,0,0,0,-1,0,1,0,-1,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,-1,0)
+  ,
+  "3 - 4"=c(0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0)
+  ,
+  "3 - 5"=c(0,0,0,0,0,-1,0,1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0)
+  ,
+  "3 - 6"=c(0,0,0,0,0,-1,-1,1,0,0,0,0,-0.25,-0.25,-0.25,0,-1,0,0,0,0)
+  ,
+  "3 - 7"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0)
+  ,
+  "3 - 8"=c(0,0,0,0,0,-1,0,1,-1,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1)
+  ,
+  "3 - 9"=c(0,0,0,0,-1,0,0,1,0,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,0,0)
+  ,
+  "3 - 10"=c(0,0,0,0,-1,0,-1,1,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0,0,0,0)
+  ,
+  "3 - 11"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1,0,0,0)
+  ,
+  "3 - 12"=c(0,0,0,0,-1,0,0,1,-1,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,-1,0)
+  ,
+  "4 - 5"=c(0,0,0,0,0,-1,0,0,1,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0)
+  ,
+  "4 - 6"=c(0,0,0,0,0,-1,-1,0,1,0,0,0,-0.25,-0.25,-0.25,0,-1,0,0,0,0)
+  ,
+  "4 - 7"=c(0,0,0,0,0,-1,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0)
+  ,
+  "4 - 8"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1)
+  ,
+  "4 - 9"=c(0,0,0,0,-1,0,0,0,1,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,0,0)
+  ,
+  "4 - 10"=c(0,0,0,0,-1,0,-1,0,1,-0.25,-0.25,-0.25,0,0,0,-1,0,0,0,0,0)
+  ,
+  "4 - 11"=c(0,0,0,0,-1,0,0,-1,1,-0.25,-0.25,-0.25,0,0,0,0,0,-1,0,0,0)
+  ,
+  "4 - 12"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,-1,0)
+  ,
+  "5 - 6"=c(0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,-1,0,0,0,0)
+  ,
+  "5 - 7"=c(0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,-1,0,0)
+  ,
+  "5 - 8"=c(0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,-1)
+  ,
+  "5 - 9"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,0,0,0)
+  ,
+  "5 - 10"=c(0,0,0,0,-1,1,-1,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,-1,0,0,0,0,0)
+  ,
+  "5 - 11"=c(0,0,0,0,-1,1,0,-1,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,-1,0,0,0)
+  ,
+  "5 - 12"=c(0,0,0,0,-1,1,0,0,-1,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,0,-1,0)
+  ,
+  "6 - 7"=c(0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,1,0,-1,0,0)
+  ,
+  "6 - 8"=c(0,0,0,0,0,0,1,0,-1,0,0,0,0,0,0,0,1,0,0,0,-1)
+  ,
+  "6 - 9"=c(0,0,0,0,-1,1,1,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,1,0,0,0,0)
+  ,
+  "6 - 10"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,-1,1,0,0,0,0)
+  ,
+  "6 - 11"=c(0,0,0,0,-1,1,1,-1,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,1,-1,0,0,0)
+  ,
+  "6 - 12"=c(0,0,0,0,-1,1,1,0,-1,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,1,0,0,-1,0)
+  ,
+  "7 - 8"=c(0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,1,0,-1)
+  ,
+  "7 - 9"=c(0,0,0,0,-1,1,0,1,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,1,0,0)
+  ,
+  "7 - 10"=c(0,0,0,0,-1,1,-1,1,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,-1,0,0,1,0,0)
+  ,
+  "7 - 11"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,-1,1,0,0)
+  ,
+  "7 - 12"=c(0,0,0,0,-1,1,0,1,-1,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,1,-1,0)
+  ,
+  "8 - 9"=c(0,0,0,0,-1,1,0,0,1,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,0,0,1)
+  ,
+  "8 - 10"=c(0,0,0,0,-1,1,-1,0,1,-0.25,-0.25,-0.25,0.25,0.25,0.25,-1,0,0,0,0,1)
+  ,
+  "8 - 11"=c(0,0,0,0,-1,1,0,-1,1,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,-1,0,0,1)
+  ,
+  "8 - 12"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,0,-1,1)
+  ,
+  "9 - 10"=c(0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,-1,0,0,0,0,0)
+  ,
+  "9 - 11"=c(0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,-1,0,0,0)
+  ,
+  "9 - 12"=c(0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,-1,0)
+  ,
+  "10 - 11"=c(0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,1,0,-1,0,0,0)
+  ,
+  "10 - 12"=c(0,0,0,0,0,0,1,0,-1,0,0,0,0,0,0,1,0,0,0,-1,0)
+  ,
+  "11 - 12"=c(0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,1,0,-1,0)
+)
 
+ post_hoc_interac_smins_treatment <- summary(glht(model_focal, linfct=contrast_matrix), test=adjusted("BH"))
+ 
+ groups <- paste(rep(c("C","S","P"),each=4),rep(c("0-5mins","5-10mins","10-15mins","15-20mins"),3),sep="_")
+ names(groups) <- as.character(1:12)
+ dataset = shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),]
+ dataset$variable <- dataset$N^0.1
+ get_posthoc_groups(model=model_focal,contrast_matrix=contrast_matrix,which_levels="groups",dataset=dataset,interaction_variables=c("treatment","smins"))
+ 
+ 
+ contrast_matrix_simplified <- rbind(
+   "1 - 5"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0)
+   ,
+   "1 - 9"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,0,0)
+   ,
+   "5 - 9"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,0,0,0)
+   ,
+   "2 - 6"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,-1,0,0,0,0)
+   ,
+   "2 - 10"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0,0,0,0)
+   ,
+   "6 - 10"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,-1,1,0,0,0,0)
+   ,
+   "3 - 7"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,-1,0,0)
+   ,
+   "3 - 11"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1,0,0,0)
+   ,
+   "7 - 11"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,-1,1,0,0)
+   ,
+   "4 - 8"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,-1)
+   ,
+   "4 - 12"=c(0,0,0,0,-1,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0,0,-1,0)
+,
+  "8 - 12"=c(0,0,0,0,-1,1,0,0,0,-0.25,-0.25,-0.25,0.25,0.25,0.25,0,0,0,0,-1,1)
+ ) 
+ post_hoc_interac_smins_treatment_simplified <- summary(glht(model_focal, linfct=contrast_matrix_simplified), test=adjusted("BH"))
+ 
 ### brain dump ###
 
 ## model was first ran with all interactions, but then only group_size:treatment was significant
