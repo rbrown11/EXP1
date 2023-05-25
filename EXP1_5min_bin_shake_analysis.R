@@ -1,3 +1,13 @@
+# 
+# install.packages("cowplot")
+
+
+
+library(gridExtra)
+library(cowplot)
+library(igraph)
+
+
 ####function
 get_posthoc_groups <- function(model,contrast_matrix,which_levels,dataset,interaction_variables=NULL){
   levels <- get(which_levels)
@@ -62,39 +72,11 @@ get_posthoc_groups <- function(model,contrast_matrix,which_levels,dataset,intera
   return(post_hoc_groups)
 }
 
-###libraries
-library(multcomp)
-library(igraph)
+
 
 ########################################
 ##### NB SHAKES PER MINUTE PER ANT #####
 ########################################
-
-
-###### LINE GRAPH #######
-
-events1$Start_.s.<- as.numeric(events1$Start_.s.)
-unique(events1$Start_.s.)
-
-events1$scatter <- round_any(events1$Start_.s., 60)
-
-scat <- aggregate(N ~ scatter + ant_status + treatment + group_size, FUN=sum, data=events1)
-
-ggplot(scat, aes(x=scatter, y=N, color=treatment))+
-  geom_point(aes(fill=treatment))+
-  facet_grid(treatment~ant_status) +
-  labs(x="Time (seconds)", y="Number of body shakes performed")+
-  # geom_smooth(method=lm, se=F, aes(fill=treatment))+
-  geom_line(size=1)+
-  theme_bw()+
-  # ylim(0, 100)+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-
-
-
 
 
 
@@ -198,9 +180,10 @@ shake_time_table1$duration <- shake_time_table1$duration / 60
 shake_time_table1$frequency <- shake_time_table1$N / shake_time_table1$duration
 
 
+##sanity checks##
 
 ggplot(shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),],
-       aes(x=group_size, y=N, fill=treatment))+
+       aes(x=treatment, y=N, fill=treatment))+
   geom_bar(position="dodge", stat="identity")+
   facet_wrap(~smins)
 
@@ -209,79 +192,164 @@ ggplot(shake_time_table1[which(shake_time_table1$ant_status=="NESTMATE"),],
   geom_bar(position="dodge", stat="identity")+
   facet_wrap(~smins)
 
-## just count data, have a look at means too
-## statistics for this 
-## time effect into model
-## N ~ group_size*treatment*smins ???
+
 
 
 ###### GRAPHS FOR MEAN BODY SHAKES PER ANT ###### 
-#DURATION?
 
-mean_shake_mins <- aggregate(frequency ~ group_size + treatment + ant_status + smins, FUN=mean, data=shake_time_table1)
-se_shake_mins <- aggregate(frequency ~ group_size + treatment + ant_status + smins, FUN=standard_error, data=shake_time_table1)
 
-mean_shake_mins$se <- se_shake_mins$frequency
-colnames(mean_shake_mins) <- c("group_size", "Treatment", "ant_status", "time_bins", "mean_shakes", "se")
-
-ggplot(mean_shake_mins, aes(fill=Treatment, y=mean_shakes, x=group_size))+
-  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
-  geom_bar(position="dodge", stat="identity") +
-  facet_grid(ant_status ~ time_bins)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+### FOCAL ANTS ###
 
 
 
-
-##without group size
-
-mean_shake_mins <- aggregate(frequency ~  treatment + ant_status + smins, FUN=mean, data=shake_time_table1)
-se_shake_mins <- aggregate(frequency ~  treatment + ant_status + smins, FUN=standard_error, data=shake_time_table1)
+mean_shake_mins <- aggregate(frequency  ~ treatment + ant_status + smins, FUN=mean, data=shake_time_table1)
+se_shake_mins <- aggregate(frequency ~   treatment + ant_status + smins, FUN=standard_error, data=shake_time_table1)
 
 mean_shake_mins$se <- se_shake_mins$frequency
 colnames(mean_shake_mins) <- c("Treatment", "ant_status", "time_bins", "mean_shakes", "se")
 
-ggplot(mean_shake_mins, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
+
+mean_shake_mins[which(mean_shake_mins$Treatment=="C"), "Treatment"] <- "Control"
+mean_shake_mins[which(mean_shake_mins$Treatment=="S"), "Treatment"] <- "Sham"
+mean_shake_mins[which(mean_shake_mins$Treatment=="P"), "Treatment"] <- "Pathogen"
+
+mean_shake_mins <- subset(mean_shake_mins, ant_status=="FOCAL")
+mean_shake_mins1 <- subset(mean_shake_mins, time_bins=="0-5mins")
+
+a <- ggplot(mean_shake_mins1, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
   geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
-  facet_grid(ant_status ~ time_bins)+
+  # facet_wrap(~ time_bins)+
+  labs(x="Treatment", y="Mean number of shakes per ant", title="0-5 minutes")+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
+  guides(fill="none")+
+  geom_signif(comparisons = list(c("Control", "Pathogen")), annotations="***",
+              y_position = 0.11, tip_length=0.025, vjust=0.4,  size=1)+
+  geom_signif(comparisons = list(c("Control", "Sham")), annotations="***",
+              y_position = 0.13, tip_length=0.025, vjust=0.4,  size=1)+
+  ylim(c(0, 0.15))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+        axis.title.y=element_text(size=18) )
+
+mean_shake_mins2 <- subset(mean_shake_mins, time_bins=="5-10mins")
+
+b <- ggplot(mean_shake_mins2, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
+  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_bar(position="dodge", stat="identity") +
+  # facet_wrap(~ time_bins)+
+  labs(x="Treatment", y="Mean number of shakes per ant", title="5-10 minutes")+
+  theme_bw()+
+  guides(fill="none")+
+  geom_signif(comparisons = list(c("Control", "Pathogen")), annotations="**",
+              y_position = 0.06, tip_length=0.05, vjust=0.4,  size=1)+
+  geom_signif(comparisons = list(c("Control", "Sham")), annotations="*",
+              y_position = 0.08, tip_length=0.05, vjust=0.4,  size=1)+
+  ylim(c(0, 0.15))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
+        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank() )
+
+mean_shake_mins3 <- subset(mean_shake_mins, time_bins=="10-15mins")
 
 
-## without group size and treatment
+c <- ggplot(mean_shake_mins3, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
+  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_bar(position="dodge", stat="identity") +
+  # facet_wrap(~ time_bins)+
+  labs(x="Treatment", y="Mean number of shakes per ant", title="10-15 minutes")+
+  theme_bw()+
+  guides(fill="none")+
+  geom_signif(comparisons = list(c("Control", "Pathogen")), annotations="*",
+              y_position = 0.04, tip_length=0.1, vjust=0.4,  size=1)+
+  ylim(c(0, 0.15))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
+        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank() )
 
-mean_shake_mins <- aggregate(frequency ~  ant_status + smins, FUN=mean, data=shake_time_table1)
-se_shake_mins <- aggregate(frequency ~ ant_status + smins, FUN=standard_error, data=shake_time_table1)
+
+mean_shake_mins4 <- subset(mean_shake_mins, time_bins=="15-20mins")
+
+
+
+
+d <- ggplot(mean_shake_mins4, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
+  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_bar(position="dodge", stat="identity") +
+  # facet_wrap(~ time_bins)+
+  labs(x="Treatment", y="Mean number of shakes per ant", title="15-20 minutes")+
+  theme_bw()+
+  guides(fill="none")+
+  geom_signif(comparisons = list(c("Control", "Pathogen")), annotations="*",
+              y_position = 0.03, tip_length=0.1, vjust=0.4,  size=1)+
+  ylim(c(0, 0.15))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
+        axis.title.y=element_blank(),  axis.text.y=element_blank(), axis.ticks.y=element_blank() )
+
+
+
+hlay <- rbind(c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(1,1,2,2,3,3,4,4),
+              c(NA,NA,NA,5,5,NA,NA,NA))
+
+
+tg <- text_grob("Treatment", just='centre', family="Roboto", size=20)
+                
+allplots <- align_plots(a,b,c,d, align="hv")
+
+grid.arrange(allplots[[1]], allplots[[2]], allplots[[3]], allplots[[4]], tg, layout_matrix=hlay)
+
+
+
+
+### NESTMATES ###
+
+
+##time bins only
+
+mean_shake_mins <- aggregate(frequency  ~ smins + ant_status , FUN=mean, data=shake_time_table1)
+se_shake_mins <- aggregate(frequency ~   smins + ant_status , FUN=standard_error, data=shake_time_table1)
 
 mean_shake_mins$se <- se_shake_mins$frequency
-colnames(mean_shake_mins) <- c( "ant_status", "time_bins", "mean_shakes", "se")
+colnames(mean_shake_mins) <- c("time_bins", "ant_status", "mean_shakes", "se")
+
+mean_shake_mins <- subset(mean_shake_mins, ant_status=="NESTMATE")
+mean_shake_mins$time_bins <- as.character(mean_shake_mins$time_bins)
+
+mean_shake_mins[which(mean_shake_mins$time_bins=="0-5mins"), "time_bins"] <- "0 - 5"
+mean_shake_mins[which(mean_shake_mins$time_bins=="5-10mins"), "time_bins"] <- "5 - 10"
+mean_shake_mins[which(mean_shake_mins$time_bins=="10-15mins"), "time_bins"] <- "10 - 15"
+mean_shake_mins[which(mean_shake_mins$time_bins=="15-20mins"), "time_bins"] <- "15 - 20"
+
+mean_shake_mins$time_bins <- factor(mean_shake_mins$time_bins,
+                                       levels=c("0 - 5", "5 - 10", "10 - 15",  "15 - 20"))
 
 
-
-ggplot(shake_time_table1, aes(fill=ant_status, y=N, x=smins))+
-  # geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
-  # geom_bar(position="dodge", stat="identity") +
-  # geom_violin(trim=T)+
-  # geom_boxplot()+
-  geom_point (aes(color=ant_status))+
-  stat_summary(fun.y=mean, geom="bar", color="black", size=1)+
-  # geom_line(size=1, color="red")+
-  facet_wrap( ~ ant_status) +
+cld <- c("c", "b", "ab", "a")
+ggplot(mean_shake_mins, aes(fill=time_bins, y=mean_shakes, x=time_bins))+
+  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_bar(position="dodge", stat="identity") +
+  geom_text(aes(label= cld, y = mean_shakes + se), vjust= -1, position = position_dodge(0.9), size=6, family="Roboto") +
+  # facet_wrap(~ time_bins)+
+  labs(x="Time bins (minutes)", y="Mean number of shakes per ant", title="Mean number of shakes by nestmates")+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
+  guides(fill="none")+
+  scale_fill_viridis_d(option = "plasma")+
+  # geom_signif(comparisons = list(c("Control", "Pathogen")), annotations="*",
+  #             y_position = 0.03, tip_length=0.1, vjust=0.4,  size=1)+
+  ylim(c(0, 0.04))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=16),
         legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
-
-  # ggplot(sum_status_int, aes(fill=treatment, y=N, x=group_size, color=treatment))+
-#   geom_beeswarm(cex=1, priority = "density") +
-#   labs(x="group size", y="Number of body shakes of each ant") +
-#   facet_wrap(~ant_status)
+        axis.title.y=element_text(size=18) )
 
 
 
@@ -301,16 +369,13 @@ shake_time_table1 [ which (shake_time_table1$Replicate > 16 ) , "time" ] <- "SUM
 model_focal <- glmer(N^0.1 ~ group_size*treatment*smins + offset(log(duration)) + (1|Replicate),
                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
 
-
+#remove non sig 3 way interaction
 model_focal <- glmer(N^0.1 ~ group_size*treatment+group_size*smins+ treatment*smins+ offset(log(duration)) + (1|Replicate),
                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
 
 model_focal <- glmer(N^0.1 ~ group_size*treatment+ treatment*smins+ offset(log(duration)) + (1|Replicate),
                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
 
-
-# model_focal <- glmer(N^0.1 ~ group_size*treatment+smins + offset(log(duration)) + (1|Replicate),
-#                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),])
 
 qqnorm(residuals(model_focal))
 qqline(residuals(model_focal))
@@ -464,6 +529,8 @@ contrast_matrix <- rbind(
  get_posthoc_groups(model=model_focal,contrast_matrix=contrast_matrix,which_levels="groups",dataset=dataset,interaction_variables=c("treatment","smins"))
  
  
+ 
+ 
  contrast_matrix_simplified <- rbind(
    "1 - 5"=c(0,0,0,0,0,-1,0,0,0,0,0,0,-0.25,-0.25,-0.25,0,0,0,0,0,0)
    ,
@@ -491,32 +558,43 @@ contrast_matrix <- rbind(
  ) 
  post_hoc_interac_smins_treatment_simplified <- summary(glht(model_focal, linfct=contrast_matrix_simplified), test=adjusted("BH"))
  
-### brain dump ###
-
-## model was first ran with all interactions, but then only group_size:treatment was significant
-## none of the smins interactions were significant so i removed them
-## once the model was re ran smins was significant, with post hoc scores that look like:
-#                             Estimate Std. Error z value Pr(>|z|)    
-# 5-10mins - 0-5mins == 0    -0.07678    0.02235  -3.436  0.00118 ** 
-# 10-15mins - 0-5mins == 0   -0.09893    0.02235  -4.427 2.87e-05 ***
-# 15-20mins - 0-5mins == 0   -0.11759    0.02235  -5.262 8.57e-07 ***
-# 10-15mins - 5-10mins == 0  -0.02215    0.02235  -0.991  0.38594    
-# 15-20mins - 5-10mins == 0  -0.04080    0.02235  -1.826  0.10184    
-# 15-20mins - 10-15mins == 0 -0.01865    0.02235  -0.835  0.40397    
-
-## which suggests that 0-5 mins contains more shakes than the rest of the time for focal ants
-## regardless of treatment?
-## but the interaction between group size and treatment is still there so model_focal_interac in exp code (3) is still valid
-# should try to find a nice way to show distribution of data 
-
-
+ 
+ 
+ groups <- paste(rep(c("C","S","P"),each=4),rep(c("0-5mins","5-10mins","10-15mins","15-20mins"),3),sep="_")
+ names(groups) <- as.character(1:12)
+ dataset = shake_time_table1[which(shake_time_table1$ant_status=="FOCAL"),]
+ dataset$variable <- dataset$N^0.1
+ get_posthoc_groups(model=model_focal,contrast_matrix=contrast_matrix_simplified,which_levels="groups",dataset=dataset,interaction_variables=c("treatment","smins"))
+ 
+ 
+ 
+ 
+ 
+ 
+ 
 
 ### NESTMATES MODEL ###
 
-
-model_nestmates <- glmer(N^0.1 ~ group_size+treatment+smins + offset(log(duration)) + (1|Replicate) + (1|Petri_dish) + (1|time),
+model_nestmates <- glmer(N^0.1 ~ group_size*treatment*smins + offset(log(duration)) + (1|Replicate) + (1|Petri_dish) + (1|time),
                      family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="NESTMATE"),])
 
+#remove non sig 3 way interaction
+model_nestmates <- glmer(N^0.1 ~ group_size*treatment+group_size*smins+ treatment*smins+ offset(log(duration)) + (1|Replicate) + (1|Petri_dish) + (1|time),
+                           family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="NESTMATE"),])
+
+
+#remove next largest p value interaction
+model_nestmates <- glmer(N^0.1 ~ group_size*smins+ treatment*smins+ offset(log(duration)) + (1|Replicate) + (1|Petri_dish) + (1|time),
+                         family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="NESTMATE"),])
+
+
+#remove next largest p value interaction 
+model_nestmates <- glmer(N^0.1 ~ group_size + smins + treatment*smins + offset(log(duration)) + (1|Replicate) + (1|Petri_dish) + (1|time),
+                         family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="NESTMATE"),])
+
+#remove last interaction
+model_nestmates <- glmer(N^0.1 ~ group_size + smins + treatment + offset(log(duration)) + (1|Replicate) + (1|Petri_dish) + (1|time),
+                         family="gaussian", data=shake_time_table1[which(shake_time_table1$ant_status=="NESTMATE"),])
 
 # qqnorm(residuals(model_nestmates))
 # qqline(residuals(model_nestmates))
@@ -551,12 +629,5 @@ print(cld(post_treat))
 #  C   P   S 
 # "a" "c" "b" 
 
-
-
-### brain dump ###
-
-## model ran with all random factors included for nestmates 
-## interaction terms non significant so removed, and treatment and time window significant
-## post hocs ran, results above, and they match the graph
 
 
