@@ -186,6 +186,7 @@ twitch_table[which(!is.na(match   (   twitch_table$full_ant_ID,escapes$full_ant_
 ###total number of twitches
 # total_twitches <-aggregate (cbind(frequency,N) ~ . , FUN=sum, data = twitch_table[ which(!names(twitch_table)%in%c("twitch_size","twitch_repetition","proximity_to_nestmates","proximity_to_brood"))   ])
 total_twitches <-aggregate (N ~ . , FUN=sum, data = twitch_table[ which(!names(twitch_table)%in%c("proximity_to_nestmates","proximity_to_brood"))   ])
+total_twitches$duration <- total_twitches$duration / 60
 total_twitches$frequency <- total_twitches$N/total_twitches$duration
 
 
@@ -248,14 +249,14 @@ cld <- c("a", "b", "ab", "a", "c", "e", "f", "e", "ab", "d", "e", "e", "", "", "
 ggplot(mean_status, aes(fill=Treatment, y=Mean, x=Group_size)) +
   geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), linewidth=1) +
   geom_bar(position="dodge", stat="identity") +
-  geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5) +
+  geom_text(aes(label= cld, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=5, family="Roboto") +
   facet_wrap(~ant_status) +
-  labs(x="Group size", y="Number of body shakes per ant per minute")+
-  ylim(0,0.01)+
+  labs(x="Group size", y="Mean number body shakes per ant per minute")+
+  ylim(0,0.3)+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=16) )
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=18),
+        legend.title=element_text(size=18), legend.text=element_text(size=16), axis.text=element_text(size=15, colour="black"), strip.text=element_text(size=15),
+        axis.title.y=element_text(size=16), legend.position = "bottom", strip.background = element_blank(), strip.text.x = element_text(size=18, family="Roboto") )
 
 
 
@@ -266,14 +267,21 @@ error_status <- aggregate( frequency ~ treatment_full + ant_status, FUN=standard
 nestmate$se <- error_status$frequency
 colnames(nestmate) <- c("Treatment", "ant_status", "Mean", "standard_error")
 
-nestmate <- subset(nestmate, ant_status=="FOCAL")
+nestmate <- subset(nestmate, ant_status=="NESTMATE")
+
+letters <- c("a", "c", "b")
+
 
 ggplot(nestmate, aes(fill= Treatment, y=Mean, x=Treatment))+
-  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1) +
+  geom_errorbar(aes(ymin=Mean-standard_error, ymax=Mean+standard_error), width=.6, position=position_dodge(0.9), size=1, linewidth=1.4) +
   geom_bar(position="dodge", stat="identity") +
+  geom_text(aes(label= letters, y = Mean + standard_error), vjust= -1, position = position_dodge(0.9), size=6, family="Roboto") +
+  labs(x="Treatment", y="Mean number body shakes per ant per minute", title="Number of body shakes performed by nestmates")+
   theme_bw()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=20),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
+  guides(fill="none")+
+  ylim(c(0,0.04 ))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=18),
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=16, colour="black"), strip.text=element_text(size=15),
         axis.title.y=element_text(size=16) )
 
 
