@@ -217,7 +217,7 @@ mean_shake_mins <- subset(mean_shake_mins, ant_status=="FOCAL")
 mean_shake_mins1 <- subset(mean_shake_mins, time_bins=="0-5mins")
 
 a <- ggplot(mean_shake_mins1, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
-  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_errorbar(aes(ymin=mean_shakes-0.001, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   # facet_wrap(~ time_bins)+
   labs(x="Treatment", y="Mean number of shakes per ant", title="0-5 minutes")+
@@ -229,13 +229,16 @@ a <- ggplot(mean_shake_mins1, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
               y_position = 0.13, tip_length=0.025, vjust=0.4,  size=1)+
   ylim(c(0, 0.15))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=18) )
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15, colour="black"), strip.text=element_text(size=15),
+        axis.title.y=element_text(size=18), legend.position = "bottom" ,  axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+        plot.title = element_text(size=18,  hjust=0.5))
+
+leg <- get_legend(a)
 
 mean_shake_mins2 <- subset(mean_shake_mins, time_bins=="5-10mins")
 
 b <- ggplot(mean_shake_mins2, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
-  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_errorbar(aes(ymin=mean_shakes-0.001, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   # facet_wrap(~ time_bins)+
   labs(x="Treatment", y="Mean number of shakes per ant", title="5-10 minutes")+
@@ -247,14 +250,15 @@ b <- ggplot(mean_shake_mins2, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
               y_position = 0.08, tip_length=0.05, vjust=0.4,  size=1)+
   ylim(c(0, 0.15))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank() )
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15, colour="black"), strip.text=element_text(size=15),
+        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(),  axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+        plot.title = element_text(size=18,  hjust=0.5))
 
 mean_shake_mins3 <- subset(mean_shake_mins, time_bins=="10-15mins")
 
 
 c <- ggplot(mean_shake_mins3, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
-  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_errorbar(aes(ymin=mean_shakes-0.001, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   # facet_wrap(~ time_bins)+
   labs(x="Treatment", y="Mean number of shakes per ant", title="10-15 minutes")+
@@ -264,8 +268,9 @@ c <- ggplot(mean_shake_mins3, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
               y_position = 0.04, tip_length=0.1, vjust=0.4,  size=1)+
   ylim(c(0, 0.15))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank() )
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15, colour="black"), strip.text=element_text(size=15),
+        axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(),  axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+        plot.title = element_text(size=18,  hjust=0.5))
 
 
 mean_shake_mins4 <- subset(mean_shake_mins, time_bins=="15-20mins")
@@ -274,7 +279,7 @@ mean_shake_mins4 <- subset(mean_shake_mins, time_bins=="15-20mins")
 
 
 d <- ggplot(mean_shake_mins4, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
-  geom_errorbar(aes(ymin=mean_shakes-se, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
+  geom_errorbar(aes(ymin=mean_shakes-0.001, ymax=mean_shakes+se), width=.6, position=position_dodge(0.9), size=1) +
   geom_bar(position="dodge", stat="identity") +
   # facet_wrap(~ time_bins)+
   labs(x="Treatment", y="Mean number of shakes per ant", title="15-20 minutes")+
@@ -284,8 +289,9 @@ d <- ggplot(mean_shake_mins4, aes(fill=Treatment, y=mean_shakes, x=Treatment))+
               y_position = 0.03, tip_length=0.1, vjust=0.4,  size=1)+
   ylim(c(0, 0.15))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_blank(),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_blank(),  axis.text.y=element_blank(), axis.ticks.y=element_blank() )
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15, colour="black"), strip.text=element_text(size=15),
+        axis.title.y=element_blank(),  axis.text.y=element_blank(), axis.ticks.y=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+        plot.title = element_text(size=18, hjust=0.5))
 
 
 
@@ -302,13 +308,22 @@ hlay <- rbind(c(1,1,2,2,3,3,4,4),
               c(NA,NA,NA,5,5,NA,NA,NA))
 
 
-tg <- text_grob("Treatment", just='centre', family="Roboto", size=20)
+tg <- text_grob("Treatment", just='centre', family="Roboto", size=18)
                 
-allplots <- align_plots(a,b,c,d, align="hv")
+allplots <- align_plots(a,b,c,d, align="h")
 
-grid.arrange(allplots[[1]], allplots[[2]], allplots[[3]], allplots[[4]], tg, layout_matrix=hlay)
+#grid.arrange(allplots[[1]], allplots[[2]], allplots[[3]], allplots[[4]], leg, layout_matrix=hlay)
+
+plot_grid(allplots[[1]], allplots[[2]], allplots[[3]], allplots[[4]], leg,
+          ncol=4, nrow=2, rel_widths = c(0.28,0.24,0.24,0.24),
+          rel_heights = c(0.9,0.1)) 
 
 
+plot1 <- plot_grid(allplots[[1]], allplots[[2]], allplots[[3]], allplots[[4]],
+          ncol=4, rel_widths = c(0.28,0.24,0.24,0.24))
+
+
+plot_grid(plot1, leg, ncol=1, rel_heights = c(0.9, 0.1))
 
 
 ### NESTMATES ###
@@ -347,9 +362,9 @@ ggplot(mean_shake_mins, aes(fill=time_bins, y=mean_shakes, x=time_bins))+
   # geom_signif(comparisons = list(c("Control", "Pathogen")), annotations="*",
   #             y_position = 0.03, tip_length=0.1, vjust=0.4,  size=1)+
   ylim(c(0, 0.04))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=16),
-        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15), strip.text=element_text(size=15),
-        axis.title.y=element_text(size=18) )
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), text=element_text(family="Roboto"), axis.title = element_text(size=18),
+        legend.title=element_text(size=20), legend.text=element_text(size=18), axis.text=element_text(size=15, colour="black"), strip.text=element_text(size=15),
+        axis.title.y=element_text(size=18), plot.title = element_text(size=18, hjust=0.5) )
 
 
 
