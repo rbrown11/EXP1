@@ -174,7 +174,7 @@ shake_time_table1$smins <- factor(shake_time_table1$smins, levels=c("0-5mins", "
 shake_time_table1$duration <- 1200
 escapes <- subset(events, Comment_start == "ESCAPE")
 escapes$full_ant_ID <-  with (escapes, paste(Replicate,treatment,group_size,ant_ID,sep="_"))
-shake_time_table1[which(!is.na(match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  ))), "duration"] <- shake_time_table1[which(!is.na(match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  ))), "duration"] - as.numeric(escapes[match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  )[which(!is.na(match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  )))],"Duration_.s."])
+shake_time_table1[which(!is.na(match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  ))), "duration"] <- shake_time_table1[which(!is.na(match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  ))), "duration"] - as.numeric(escapes[match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  )[which(!is.na(match   (   shake_time_table1$full_ant_ID,escapes$full_ant_ID  )))],"event_duration"])
 shake_time_table1$duration <- shake_time_table1$duration / 60
 
 shake_time_table1$frequency <- shake_time_table1$N / shake_time_table1$duration
